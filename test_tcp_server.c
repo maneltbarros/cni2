@@ -26,6 +26,9 @@ if((newfd=accept(fd,&addr,&addrlen))==-1)
 while((n=read(newfd,buffer,128))!=0){if(n==-1)/*error*/exit(1);
 printf("read:%s\n", buffer);
 ptr=&buffer[0];
+char buffer2[100];
+strcpy(buffer2, "asdfghjklqwertyuiopfghjkcvbn");
+ptr =&buffer2[0];
 while(n>0){if((nw=write(newfd,ptr,n))<=0)/*error*/exit(1);
 printf("wrote:%s\n", ptr);
 n-=nw; ptr+=nw;}

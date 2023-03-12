@@ -8,4 +8,4 @@
 
 
 bin: *.c
-	cc -g -Wall -O3 basic_functions.c ui_functions.c main_functions.c main.c -o cot
+	cc -g -Wall -O3 tcp_functions.c udp_functions.c basic_functions.c ui_functions.c main_functions.c main.c -o cot

@@ -23,6 +23,13 @@ typedef struct init_info
 
 }init_info_struct;
 
+typedef struct internal_node_
+{
+    char* id;
+    char* IP;
+    char* TCP;
+}internal_node;
+
 typedef struct node_info
 {
     char* net;
@@ -31,19 +38,30 @@ typedef struct node_info
     char* bck;
     char* ext_IP;
     char* ext_TCP;
-    char** intr;
-    char*** table;
+    int ext_fd;
+    char* bck_IP;
+    char* bck_TCP;
+    int num_intr;
+    internal_node* intr[100];
+    int table[100];//inicializar a -1
+    char contents[100][100];//fazer malloc e realloc
 }node_info_struct;
 
-typedef struct id_unique_struct_
+typedef struct choose_node_struct_
 {
-    char* id_unique_bootid;
-    char* id_unique_bootIP;
-    char* id_unique_bootTCP;
-}id_unique_struct;
+    char* chosen_node_bootid;
+    char* chosen_node_bootIP;
+    char* chosen_node_bootTCP;
+}choose_node_struct;
 
 init_info_struct* check_correct_input(char* IP, char* TCP, char* regIP, char* regUDP, init_info_struct* info);
 
-id_unique_struct* id_unique(char* str, id_unique_struct* id_struct);
+choose_node_struct* choose_node(char* str, choose_node_struct* chosen_node);
+char* unique_id(char* buffer, char* id);
+
+init_info_struct* allocate_info();
+node_info_struct* allocate_node();
+choose_node_struct* init_choose_node_struct(char* id, init_info_struct* info);
+internal_node* init_internal_node(char* id, char* IP, char* TCP);
 
 #endif    /* __basic_functions__ */
