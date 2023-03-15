@@ -6,10 +6,11 @@
  *   functions that perform the user interface tasks
  *
  * COMMENTS
- * TODO: perguntar ao stor se é preciso abrir um socket novo sempre que queremos mandar qq coisa
- *       perguntar so stor como se descobre um id único para fzr o join
- *       pedir ajuda ao stor para por o server TCP a ouvir, ao mmo tempo que estamos a mandar cenas UDP e TCP (tem a ver com o select mas n sei mais)
- *       perguntar ao stor se qd fazemos leave temos de avisar os outros nós ou eles descobrem sozinhos
+ * TODO: perguntar ao stor o que se faz quando somos o orig e recebemos un content ou nocontent (get)   
+ *       como e que eu sei que alguem fez leave (quando eles fazem close(fd), recebemos qq coisa?))
+ *          - ent nao posso fzr close(fd) quando sou cliente certo?
+ *       é preciso o valgrind estar bom? - como e que se resolve aquela shit do buffer
+ *       o que e preciso fzr no leave?
  *
  ******************************************************************************/
 #include <sys/types.h>
@@ -111,6 +112,7 @@ int accept_connection(int fd)
 {
     int newfd;
     struct sockaddr addr; socklen_t addrlen;
+    addrlen = sizeof(addr);
     if((newfd=accept(fd,&addr,&addrlen))==-1)
     /*error*/exit(1);
     return newfd;
@@ -120,14 +122,22 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 {
     ssize_t n,nw;
     char *ptr,buffer[128];
+    strcpy(buffer, " ");
+    int first_time = 1;
 
     while((n=read(newfd,buffer,128))!=0)
     {
         if(n==-1)/*error*/exit(1);
+        if(first_time == 1)first_time = 0;
         printf("read:%s\n", buffer);
         printf("n:%ld\n", n);
         printf("second to last char: %d; last_char:%d\n", (int)buffer[strlen(buffer)-1], (int)buffer[strlen(buffer)]);
         if((int)buffer[n-1] == 10)/*reading completed*/break;
+    }
+    if(first_time)
+    {
+        close(newfd);
+        return;
     }
 
     char* str1 = (char*)malloc(MAX_STR);
@@ -202,7 +212,7 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
             {
                 node->table[atoi(orig)]=i;     //atualiza a tabela de expedição
             }  
-            if (strcmp(name,node->table[i])==0)
+            if (strcmp(name,node->contents[i])==0)
             {
                 check=1;
                 break;
@@ -219,8 +229,11 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
     }
     else
     {
-            char buffer[128+1]=' ';
-            char buffer1[128+1]=' ';
+            char buffer[128+1];
+            char buffer1[128+1];
+
+            strcpy(buffer, " ");
+            strcpy(buffer1, " ");
             if ((node->table[atoi(dest)])!=-1)
             {
                 char* send_str = (char*)malloc(MAX_STR);
@@ -262,6 +275,9 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
                 if (newfd == node->ext_fd)
                 {
                     node->table[atoi(orig)]=atoi(node->ext);     //atualiza a tabela de expedição
+                }
+                else
+                {
                     char* send_str = (char*)malloc(MAX_STR);
                     strcpy(send_str, "QUERY");
                     strcat(send_str, " ");
@@ -287,9 +303,11 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
     {
         /* o que fazer? */
     }
-    else if((node->ext)!= node->table[atoi(dest)])
+    else if((atoi(node->ext))!= node->table[atoi(dest)])
     {
-        char buffer[128+1]=' ';
+        char buffer[128+1];
+        strcpy(buffer, " ");
+
         char* send_str = (char*)malloc(MAX_STR);
         strcpy(send_str, "CONTENT");
         strcat(send_str, " ");
@@ -303,7 +321,9 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
     }
     else
     {
-        char buffer[128+1]=' ';
+        char buffer[128+1];
+        strcpy(buffer, " ");
+
         char* send_str = (char*)malloc(MAX_STR);
         strcpy(send_str, "CONTENT");
         strcat(send_str, " ");
@@ -325,9 +345,11 @@ char* NONCONTENT(char* dest, char* orig, char* name, node_info_struct* node, cha
     {
         /* o que fazer? */
     }
-    else if((node->ext)!= node->table[atoi(dest)])
+    else if((atoi(node->ext))!= node->table[atoi(dest)])
     {
-        char buffer[128+1]=' ';
+        char buffer[128+1];
+        strcpy(buffer, " ");
+
         char* send_str = (char*)malloc(MAX_STR);
         strcpy(send_str, "NONCONTENT");
         strcat(send_str, " ");
@@ -341,7 +363,9 @@ char* NONCONTENT(char* dest, char* orig, char* name, node_info_struct* node, cha
     }
     else
     {
-        char buffer[128+1]=' ';
+        char buffer[128+1];
+        strcpy(buffer, " ");
+
         char* send_str = (char*)malloc(MAX_STR);
         strcpy(send_str, "NONCONTENT");
         strcat(send_str, " ");

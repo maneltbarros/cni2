@@ -52,6 +52,9 @@ int main(int argc, char *argv[])
 
     int out_fds;
 
+    int wait_fds[100];
+    int wait_fds_cnt = 0;
+
     char* return_fgets;
 
     struct addrinfo *res_udp = get_udp_server_info(info);
@@ -66,7 +69,7 @@ int main(int argc, char *argv[])
 
     int fdes[100];
 
-    for(int i = 0; i < 100; ++i)fdes[i]=0;
+    for(int i = 0; i < 100; ++i)fdes[i]=-1;
 
     while(1)
     {
@@ -97,11 +100,11 @@ int main(int argc, char *argv[])
 
                     if(strcmp(str1, "join") == 0)
                     {
-                        node->ext_fd = join(str2, str3, res_udp, info, node);
+                        node->ext_fd = join(str2, str3, res_udp, info, node, fd);
                     }
                     else if(strcmp(str1, "djoin") == 0)
                     {
-                        node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node);
+                        node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
                     }
                     else if(strcmp(str1, "create") == 0)
                     {
@@ -158,8 +161,25 @@ int main(int argc, char *argv[])
                 else if(FD_ISSET(fd,&testfds))
                 {
                     int newfd = accept_connection(fd);
-                    receive_and_send_tcp(newfd, fdes, info, node);
+                    FD_SET(newfd,&inputs);
+                    wait_fds[wait_fds_cnt] = newfd;
+                    wait_fds_cnt++;
                 }
+                for(int i = 0; i< 100; ++i)
+                {
+                    if(FD_ISSET(fdes[i],&testfds))
+                    {
+                        receive_and_send_tcp(fdes[i], fdes, info, node);
+                    }
+                }
+                for(int i = 0; i< wait_fds_cnt; ++i)
+                {
+                    if(FD_ISSET(wait_fds[i],&testfds))
+                    {
+                        receive_and_send_tcp(wait_fds[i], fdes, info, node);
+                    }
+                }
+                
         }
     }
 }

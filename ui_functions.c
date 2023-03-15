@@ -26,7 +26,7 @@
 
 #define MAX_STR 100
 
-int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node_info_struct* node)
+int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int fd)
 {
     char buffer[128+1];
 
@@ -39,10 +39,10 @@ int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node
 
     printf("%s\n", send_str);
 
-    int fd = open_udp_socket();
-    send_message_udp(send_str, fd, res);
+    int fd_udp = open_udp_socket();
+    send_message_udp(send_str, fd_udp, res);
 
-    recv_message_udp(buffer, fd);
+    recv_message_udp(buffer, fd_udp);
 
     id = unique_id(buffer, id);
 
@@ -59,22 +59,22 @@ int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node
     strcat(send_str, " ");
     strcat(send_str, info->TCP);
 
-    send_message_udp(send_str, fd, res);
+    send_message_udp(send_str, fd_udp, res);
 
-    recv_message_udp(buffer, fd);
+    recv_message_udp(buffer, fd_udp);
 
-    close(fd);
+    close(fd_udp);
 
-    return djoin(net, id, chosen_node->chosen_node_bootid, chosen_node->chosen_node_bootIP, chosen_node->chosen_node_bootTCP, res, info, node);
+    return djoin(net, id, chosen_node->chosen_node_bootid, chosen_node->chosen_node_bootIP, chosen_node->chosen_node_bootTCP, res, info, node, fd);
 
 }
 
-int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct addrinfo* res, init_info_struct* info, node_info_struct* node)
+int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int fd)
 {
 
     char* send_str = (char*)malloc(MAX_STR);
 
-    int fd_TCP = 0;
+    int fd_TCP = fd;
 
     /////////////////////---------------add node info
     strcpy(node->net, net);

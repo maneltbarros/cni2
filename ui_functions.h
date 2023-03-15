@@ -19,8 +19,8 @@
 #include "udp_functions.h"
 #include "tcp_functions.h"
 
-int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node_info_struct* node);
-int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct addrinfo* res, init_info_struct* info, node_info_struct* node);
+int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int fd);
+int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int fd);
 char create(char* name);
 char delete_fctn(char* name);
 char get_fctn(char* dest, char* name, init_info_struct* info, node_info_struct* node);

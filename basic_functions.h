@@ -25,9 +25,9 @@ typedef struct init_info
 
 typedef struct internal_node_
 {
-    char* id;
-    char* IP;
-    char* TCP;
+    char id[100];
+    char IP[100];
+    char TCP[100];
 }internal_node;
 
 typedef struct node_info

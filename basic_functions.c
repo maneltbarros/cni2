@@ -194,6 +194,7 @@ node_info_struct* allocate_node()
     node->bck_TCP = (char*)malloc(MAX_STR);
     node->bck = (char*)malloc(5);
     node->num_intr = 0;
+    for(int i = 0; i< 100;++i)node->table[i] = -1;
     return node;
 }
 

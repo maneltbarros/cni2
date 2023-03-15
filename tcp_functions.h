@@ -31,6 +31,8 @@ int accept_connection(int fd);
 void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_info_struct* node);
 
 char* NEW(char* id, char* IP, char* TCP, node_info_struct* node, char* return_value, int* fdes, int newfd);
+char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd);
+char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd);
 
 #endif    /* __tcp_functions__ */
 
