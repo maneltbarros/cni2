@@ -69,3 +69,8 @@ void free_info(init_info_struct* info)
         free(info->regUDP);
     }
 }
+
+void free_node(node_info_struct* node)
+{
+    
+}

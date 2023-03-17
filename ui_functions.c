@@ -30,6 +30,8 @@ int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node
 {
     char buffer[128+1];
 
+    int return_value = -1;
+
     choose_node_struct* chosen_node = init_choose_node_struct(id, info);
 
     char* send_str = (char*)malloc(MAX_STR);
@@ -65,7 +67,11 @@ int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node
 
     close(fd_udp);
 
-    return djoin(net, id, chosen_node->chosen_node_bootid, chosen_node->chosen_node_bootIP, chosen_node->chosen_node_bootTCP, res, info, node, fd);
+    return_value = djoin(net, id, chosen_node->chosen_node_bootid, chosen_node->chosen_node_bootIP, chosen_node->chosen_node_bootTCP, res, info, node, fd);
+
+    free(chosen_node);
+
+    return return_value;
 
 }
 
@@ -87,8 +93,6 @@ int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct
     strcpy(node->bck_TCP, info->TCP);
     ////////////////////////////////////////////////////////////
 
-    printf("%s %s\n", bootIP, bootTCP);
-
     if(strcmp(id, bootid) != 0) //only open TCP session if net already has nodes
     {
         //////////////////////-------------------connect to TCP
@@ -98,7 +102,7 @@ int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct
         tcp_connect(fd_TCP, res_TCP);
         ////////////////////////////////////////////////////////
 
-        //////////////////////----------------------send NEW TCP and receive EXTERN
+        //////////////////////----------------------send NEW TCP
 
         strcpy(send_str, "NEW");
         strcat(send_str, " ");
@@ -111,100 +115,87 @@ int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct
 
         char buffer[128+1];
 
-        send_and_receive_tcp(send_str, fd_TCP, buffer);
-
-        char* str1 = (char*)malloc(MAX_STR);
-        char* str2 = (char*)malloc(MAX_STR);
-        char* str3 = (char*)malloc(MAX_STR);
-        char* str4 = (char*)malloc(MAX_STR);
-
-        strcpy(str2, "0");
-
-        sscanf(buffer, "%s %s %s %s", str1, str2, str3, str4);
-
-        if(strcmp(str2, "0") != 0)
-        {
-            strcpy(node->bck, str2);
-            strcpy(node->bck_IP, str3);
-            strcpy(node->bck_TCP, str4);
-        }
+        send_tcp(send_str, fd_TCP, buffer);
         ////////////////////////////////////////////////////////////
     }
 
     return fd_TCP;
 }
 
-char create(char* name)
+char create(char* name, node_info_struct* node)
 {
+    strcpy(name, node->contents[node->num_content]);
+    node->num_content++;
     return 's';
 }
 
-char delete_fctn(char* name)
+char delete_fctn(char* name, node_info_struct* node)
 {
+    for (int i = 0; i < node->num_content; i++)
+    {
+        if (strcmp(node->contents[i], name) == 0)
+        {
+            if(node->num_content > 1)
+            {
+                strcpy(node->contents[i], node->contents[node->num_content]);
+            }
+            node->num_content--;
+        } 
+    }
+    
     return 's';
 }
 
-char get_fctn(char* dest, char* name, init_info_struct* info, node_info_struct* node)
+char get_fctn(char* dest, char* name, init_info_struct* info, node_info_struct* node, int* fdes)
 {
-    char* send_str = (char*)malloc(MAX_STR);
-    char buffer[128+1];
-
-    //////////////////////-------------------connect to TCP
-    struct addrinfo hints_TCP,*res_TCP;
-    int fd_TCP,n_TCP;
-
-    fd_TCP=socket(AF_INET,SOCK_STREAM,0);//TCP socket
-    if(fd_TCP==-1)exit(1);//error
-    memset(&hints_TCP,0,sizeof hints_TCP);
-    hints_TCP.ai_family=AF_INET;//IPv4
-    hints_TCP.ai_socktype=SOCK_STREAM;//TCP socket
-    n_TCP=getaddrinfo(node->ext_IP, node->ext_TCP, &hints_TCP,&res_TCP);
-    if(n_TCP!=0)/*error*/perror("getaddrinfo");
-    n_TCP=connect(fd_TCP,res_TCP->ai_addr,res_TCP->ai_addrlen);
-    if(n_TCP==-1)/*error*/perror("connect");
-    ////////////////////////////////////////////////////////
-
-    //////////////////////----------------------send NEW TCP
-    ssize_t nbytes,nleft,nwritten,nread;
-    char *ptr;
-
-    strcpy(send_str, "QUERY ");
-    strcat(send_str, " ");
-    strcat(send_str, dest);
-    strcat(send_str, " ");
-    strcat(send_str, node->id);     //nos somos a 'orig'
-    strcat(send_str, " ");
-    strcat(send_str, name);
-    strcat(send_str, "\n");
-
-    ptr=strcpy(buffer,send_str);
-    nbytes=(int)strlen(send_str);
-    nleft=nbytes;
-    while(nleft>0){nwritten=write(fd_TCP,ptr,nleft);
-    if(nwritten<=0)/*error*/exit(1);
-    nleft-=nwritten;
-    ptr+=nwritten;}
-    nleft=nbytes; ptr=buffer;
-    while(nleft>0){nread=read(fd_TCP,ptr,nleft);
-    if(nread==-1)/*error*/exit(1);
-    else if(nread==0)break;//closed by peer
-    nleft-=nread;
-    ptr+=nread;}
-    nread=nbytes-nleft;
-    buffer[nread] = '\0';
-    printf("echo: %s\n", buffer);
-    close(fd_TCP);
-    ////////////////////////////////////////////////////////////
+    char send_str[100];
+    sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, node->id, name);
+    char buffer[128];
+    for (int i = 0; i < 100; i++)
+    {
+        if (atoi(dest) == node->table[i])
+        {
+            if (atoi(node->ext) == i)
+            {
+                send_tcp(send_str,node->ext_fd,buffer);
+            }
+            else
+            send_tcp(send_str,fdes[i],buffer);
+        }
+        return 's';
+    }
     return 's';
 }
 
-char show_topology()
+char show_topology(node_info_struct* node)
 {
+    printf("Vizinhos internos:\n");
+    for(int i = 0; i < node->num_intr; ++i)
+    {
+        printf("%s %s %s\n", node->intr[i]->id, node->intr[i]->IP, node->intr[i]->TCP);
+    }
+    printf("\n");
+
+    printf("Vizinho externo:\n");
+    printf("%s %s %s\n", node->ext, node->ext_IP, node->ext_TCP);
+    printf("\n");
+
+    printf("Backup node:\n");
+    printf("%s %s %s\n", node->bck, node->bck_IP, node->bck_TCP);
+    printf("\n");
+
     return 's';
 }
 
-char show_names()
+char show_names(node_info_struct* node)
 {
+    printf("Contents:\n");
+    for (int i = 0; i < node->num_content; i++)
+    {
+        printf("%s\n", node->contents[i]);
+    }
+    printf("\n");
+    
     return 's';
 }
 
@@ -213,15 +204,11 @@ char show_routing()
     return 's';
 }
 
-char leave(struct addrinfo* res, init_info_struct* info, node_info_struct* node)
+char leave(struct addrinfo* res, init_info_struct* info, node_info_struct* node, int* fdes, int fd, fd_set* inputs)
 {
-    ssize_t n;
-    int fd;
-    struct sockaddr addr;
-    socklen_t addrlen;
     char buffer[128+1];
 
-    char* send_str = (char*)malloc(MAX_STR);
+    char send_str[100];
 
     strcpy(send_str, "UNREG ");
     strcat(send_str, node->net);
@@ -230,22 +217,29 @@ char leave(struct addrinfo* res, init_info_struct* info, node_info_struct* node)
 
     printf("%s\n", send_str);
 
-    fd=socket(AF_INET,SOCK_DGRAM,0);//UDP socket
-    if(fd==-1)/*error*/perror("socket");
-    n=sendto(fd,send_str,(int)strlen(send_str),0,res->ai_addr,res->ai_addrlen);
-    if(n==-1)/*error*/perror("sendto");
+    int fd_udp = open_udp_socket();
+    send_message_udp(send_str, fd_udp, res);
 
-    addrlen=sizeof(addr);
-    n=recvfrom(fd,buffer,128,0,&addr,&addrlen);
-    if(n==-1)/*error*/exit(1);
-    buffer[n] = '\0';
-    printf("echo: %s\n", buffer);
-    close(fd);
+    recv_message_udp(buffer, fd_udp);
+    close(fd_udp);
+
+    for(int i = 0; i< 100; ++i)
+    {
+        if(fdes[i] != -1)
+        {
+            close(fdes[i]);
+            FD_CLR(fdes[i], inputs);
+        }
+    }
+    close(node->ext_fd);
+    FD_CLR(node->ext_fd, inputs);
+    reset_node(node);
+    //close(fd);
 
     return 's';
 }
 
-void exit_fctn(char* str1, char* str2, char* str3, char* str4, char* str5, char* str6, struct addrinfo* res, init_info_struct* info, int* fdes)
+void exit_fctn(char* str1, char* str2, char* str3, char* str4, char* str5, char* str6, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int* fdes)
 {
     for(int i = 0; i < 100; ++i)if(fdes[i] != 0)close(fdes[i]);
     //close(node->ext_fd);
@@ -257,6 +251,7 @@ void exit_fctn(char* str1, char* str2, char* str3, char* str4, char* str5, char*
     free(str5);
     free(str6);
     free_info(info);
+    free_node(node);
     freeaddrinfo(res);
     exit(0);
 }

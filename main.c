@@ -101,28 +101,30 @@ int main(int argc, char *argv[])
                     if(strcmp(str1, "join") == 0)
                     {
                         node->ext_fd = join(str2, str3, res_udp, info, node, fd);
+                        FD_SET(node->ext_fd, &inputs);
                     }
                     else if(strcmp(str1, "djoin") == 0)
                     {
                         node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
+                        FD_SET(node->ext_fd, &inputs);
                     }
                     else if(strcmp(str1, "create") == 0)
                     {
-                        return_value = create(str2);
+                        return_value = create(str2, node);
                     }
                     else if(strcmp(str1, "delete") == 0)
                     {
-                        return_value = delete_fctn(str2);
+                        return_value = delete_fctn(str2, node);
                     }
                     else if(strcmp(str1, "get") == 0)
                     {
-                        return_value = get_fctn(str2, str3, info, node);
+                        return_value = get_fctn(str2, str3, info, node, fdes);
                     }
                     else if(strcmp(str1, "show") == 0)
                     {
                         if(strcmp(str1, "topology") == 0)
                         {
-                            return_value = show_topology();
+                            return_value = show_topology(node);
                         }
                         else if(strcmp(str1, "names") == 0)
                         {
@@ -135,7 +137,7 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "st") == 0)
                     {
-                        return_value = show_topology();
+                        return_value = show_topology(node);
                     }
                     else if(strcmp(str1, "sn") == 0)
                     {
@@ -147,11 +149,11 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "leave") == 0)
                     {
-                        return_value = leave(res_udp, info, node);
+                        return_value = leave(res_udp, info, node, fdes, fd, &inputs);
                     }
                     else if(strcmp(str1, "exit") == 0)
                     {
-                        exit_fctn(str1, str2, str3, str4, str5, str6, res_udp, info, fdes);
+                        exit_fctn(str1, str2, str3, str4, str5, str6, res_udp, info, node, fdes);
                     }
                     else
                     {
@@ -164,19 +166,35 @@ int main(int argc, char *argv[])
                     FD_SET(newfd,&inputs);
                     wait_fds[wait_fds_cnt] = newfd;
                     wait_fds_cnt++;
+
                 }
-                for(int i = 0; i< 100; ++i)
+                else if(FD_ISSET(node->ext_fd,&testfds))
                 {
-                    if(FD_ISSET(fdes[i],&testfds))
+                    printf("recebi cenas do ext\n");
+                    receive_and_send_tcp(node->ext_fd, fdes, info, node, &inputs);
+                }
+                else
+                {
+                    for(int i = 0; i< 100; ++i)
                     {
-                        receive_and_send_tcp(fdes[i], fdes, info, node);
+                        if(fdes[i] != -1)
+                        {
+                            if(FD_ISSET(fdes[i],&testfds))
+                            {
+                                printf("recebi cenas do interno:%d;\n", i);
+                                receive_and_send_tcp(fdes[i], fdes, info, node, &inputs);
+                            }
+                        }
                     }
-                }
-                for(int i = 0; i< wait_fds_cnt; ++i)
-                {
-                    if(FD_ISSET(wait_fds[i],&testfds))
+                    for(int i = 0; i< wait_fds_cnt; ++i)
                     {
-                        receive_and_send_tcp(wait_fds[i], fdes, info, node);
+                        if(FD_ISSET(wait_fds[i],&testfds))
+                        {
+                            printf("recebi cenas de um gajo que estava no wait_fds\n");
+                            receive_and_send_tcp(wait_fds[i], fdes, info, node, &inputs);
+                            wait_fds[wait_fds_cnt-1] = -1;
+                            wait_fds_cnt--;
+                        }
                     }
                 }
                 

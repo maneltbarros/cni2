@@ -194,16 +194,18 @@ node_info_struct* allocate_node()
     node->bck_TCP = (char*)malloc(MAX_STR);
     node->bck = (char*)malloc(5);
     node->num_intr = 0;
-    for(int i = 0; i< 100;++i)node->table[i] = -1;
+    node->num_content = 0;
+    for(int i = 0; i > 100;++i)
+    {
+          node->table[i] = -1;
+    }
     return node;
+    node->num_content=0;
 }
 
 choose_node_struct* init_choose_node_struct(char* id, init_info_struct* info)
 {
      choose_node_struct* chosen_node = (choose_node_struct*)malloc(sizeof(choose_node_struct));
-     chosen_node->chosen_node_bootid = (char*)calloc(5, sizeof(char));
-     chosen_node->chosen_node_bootIP = (char*)calloc(MAX_STR, sizeof(char));
-     chosen_node->chosen_node_bootTCP = (char*)calloc(MAX_STR, sizeof(char));
 
      strcpy(chosen_node->chosen_node_bootid, id);
      strcpy(chosen_node->chosen_node_bootIP, info->IP);
@@ -219,4 +221,29 @@ internal_node* init_internal_node(char* id, char* IP, char* TCP)
      strcpy(ret->IP, IP);
      strcpy(ret->TCP, TCP);
      return ret;
+}
+
+void reset_node(node_info_struct* node)
+{
+     strcpy(node->net, "0");
+     strcpy(node->id, "0");
+     strcpy(node->ext, "0");
+     strcpy(node->ext_IP, "0");
+     strcpy(node->ext_TCP, "0");
+     strcpy(node->bck, "0");
+     strcpy(node->bck_IP, "0");
+     strcpy(node->bck_TCP, "0");
+     node->ext_fd = -1;
+     for (int i = 0; i < node->num_intr; i++)
+     {
+          free(node->intr[i]);
+     }
+     
+     node->num_intr = 0;
+     node->num_content = 0;
+     for (int i = 0; i < 100; i++)
+     {
+          node->table[i] = -1;
+     }
+     
 }
