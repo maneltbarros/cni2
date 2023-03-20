@@ -53,14 +53,19 @@ struct addrinfo *get_tcp_server_info(char* bootIP, char* bootTCP)
 int open_tcp_socket()
 {
     int fd_TCP=socket(AF_INET,SOCK_STREAM,0);//TCP socket
-    if(fd_TCP==-1)exit(1);//error
+    if(fd_TCP==-1)perror("socket");//error
     return fd_TCP;
 }
 
 void tcp_connect(int fd_TCP, struct addrinfo* res_TCP)
 {
     ssize_t n_TCP=connect(fd_TCP,res_TCP->ai_addr,res_TCP->ai_addrlen);
-    if(n_TCP==-1)/*error*/perror("connect");
+    if(n_TCP==-1)/*error*/
+    {
+        perror("connect");
+        //o que fzr aqui?
+        exit(1);
+    }
 }
 
 void send_tcp(char* send_str, int fd_TCP, char* buffer)
@@ -73,7 +78,11 @@ void send_tcp(char* send_str, int fd_TCP, char* buffer)
     while(nleft>0)
     {
         nwritten=write(fd_TCP,ptr,nleft);
-        if(nwritten<=0)/*error*/exit(1);
+        if(nwritten<=0)
+        {
+            perror("write");
+            exit(1);
+        }
         nleft-=nwritten;
         ptr+=nwritten;
         printf("send wrote: %s\n", buffer);
@@ -89,7 +98,7 @@ int open_tcp_server(char* IP, char* TCP)
     hints.ai_family=AF_INET;//IPv4
     hints.ai_socktype=SOCK_STREAM;//TCP socket
     hints.ai_flags=AI_PASSIVE;
-    if((errcode=getaddrinfo(IP,TCP,&hints,&res))!=0)/*error*/exit(1);
+    if((errcode=getaddrinfo(IP,TCP,&hints,&res))!=0)/*error*/perror("getaddrinfo");
     if(bind(fd,res->ai_addr,res->ai_addrlen)==-1)/*error*/perror("bind");
     if(listen(fd,100)==-1)/*error*/perror("listen");
     return fd;
@@ -101,7 +110,7 @@ int accept_connection(int fd)
     struct sockaddr addr; socklen_t addrlen;
     addrlen = sizeof(addr);
     if((newfd=accept(fd,&addr,&addrlen))==-1)
-    /*error*/exit(1);
+    /*error*/perror("accept");
     return newfd;
 }
 
@@ -114,7 +123,7 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 
     while((n=read(newfd,buffer,128))!=0)
     {
-        if(n==-1)/*error*/exit(1);
+        if(n==-1)/*error*/perror("read");
         if(first_time == 1)first_time = 0;
         printf("read:%s\n", buffer);
         printf("n:%ld\n", n);
@@ -152,7 +161,7 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 
     if(strcmp(str1, "NEW") == 0)
     {
-        return_value = NEW(str2, str3, str4, node, return_value, fdes, newfd);
+        return_value = NEW(str2, str3, str4, node, info, return_value, fdes, newfd);
     }
     else if(strcmp(str1, "EXTERN") == 0)
     {
@@ -169,19 +178,23 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
     else if(strcmp(str1, "NOCONTENT") == 0)
     {
         return_value=N_CONTENT(str2,str3, str4, node, return_value, fdes, newfd);
- 
     }
     else if(strcmp(str1, "WITHDRAW") == 0)
     {
         node->table[atoi(str2)] = -1;
     }
+    else
+    {
+        printf("unknown message\n");
+    }
+    
 
     if(strcmp(return_value, "0") != 0)
     {
         strcpy(buffer, return_value);
         ptr=&buffer[0];
         n = strlen(buffer);
-        while(n>0){if((nw=write(newfd,ptr,n))<=0)/*error*/exit(1);
+        while(n>0){if((nw=write(newfd,ptr,n))<=0)/*error*/perror("write");
         printf("wrote:%s\n", ptr);
         n-=nw; ptr+=nw;}
     }
@@ -189,13 +202,15 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 
 void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info, int* fdes, fd_set* inputs)
 {
-    /*char id_str[5];
+    char id_str[5];
     id_str[0] = id_do_gajo/10;
     id_str[1] = id_do_gajo%10;
-    id_str[2] = '\0';*/
+    id_str[2] = '\0';
     char send_str[100];
     char buffer[128];
     strcpy(send_str, "0");
+
+    node->table[id_do_gajo] = -1;
 
     for(int i = 0; i < node->num_intr;++i)
     {
@@ -210,6 +225,19 @@ void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info
             }
             node->num_intr--;
             printf("ja limpou o interno\n");
+
+            ////////////////////-----------------mandar WITHDRAWs 
+            sprintf(send_str, "%s %s\n", "WITHDRAW", id_str);
+
+            for (int i = 0; i < node->num_intr; i++)
+            {
+                send_tcp(send_str, fdes[atoi(node->intr[i]->id)], buffer);
+            }
+            if (strcmp(node->ext, node->id) != 0)
+            {
+                send_tcp(send_str, node->ext_fd, buffer);
+            }
+            ////////////////////////////////////////////////////
             return;
         }
     }
@@ -225,11 +253,13 @@ void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info
 
         node->ext_fd = fd_TCP;
 
+        printf("vou fzr connect com este gajo:%s %s %s;\n", node->ext, node->ext_IP, node->ext_TCP);
         tcp_connect(fd_TCP, res_TCP);
         sprintf(send_str, "%s %s %s %s\n", "NEW", node->id, info->IP, info->TCP);
         printf("vou fzr send para o ext\n");
         send_tcp(send_str, node->ext_fd, buffer);
         FD_SET(fd_TCP, inputs);
+        node->table[atoi(node->ext)] = atoi(node->ext);
 
         sprintf(send_str, "%s %s %s %s\n", "EXTERN", node->ext, node->ext_IP, node->ext_TCP);
         for(int i = 0; i < node->num_intr;++i)
@@ -241,9 +271,8 @@ void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info
         strcpy(node->bck, node->id);    //assumo que sou ancora, para que se nao receber nenhum EXTERN ficar tudo fixe
         strcpy(node->bck_IP, info->IP);
         strcpy(node->bck_TCP, info->TCP);
-        return;
     }
-    if(node->num_intr > 0)
+    else if(node->num_intr > 0)
     {
         printf("ele era um no ancora e ha mais nos\n");
         strcpy(node->ext, node->intr[0]->id);
@@ -265,8 +294,6 @@ void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info
             node->intr[0] = node->intr[node->num_intr - 1];
         }
         node->num_intr--;
-
-        return;
     }
     else
     {
@@ -280,20 +307,37 @@ void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info
         //node->ext_fd = ?
     }
 
+    sprintf(send_str, "%s %s\n", "WITHDRAW", id_str);
+
+    for (int i = 0; i < node->num_intr; i++)
+    {
+        send_tcp(send_str, fdes[atoi(node->intr[i]->id)], buffer);
+    }
+    if (strcmp(node->ext, node->id) != 0)
+    {
+        send_tcp(send_str, node->ext_fd, buffer);
+    }
+
 }
 
-char* NEW(char* id, char* IP, char* TCP, node_info_struct* node, char* return_value, int* fdes, int newfd)
+char* NEW(char* id, char* IP, char* TCP, node_info_struct* node, init_info_struct * info, char* return_value, int* fdes, int newfd)
 {
-    fdes[atoi(id)] = newfd;
+    node->table[atoi(id)] = atoi(id);
 
     if(strcmp(node->ext, node->id) == 0)
     {
         strcpy(node->ext, id);
+        strcpy(node->ext_IP, IP);
+        strcpy(node->ext_TCP, TCP);
+        node->ext_fd = newfd;
         strcpy(node->bck, node->id);
+        strcpy(node->bck_IP, info->IP);
+        strcpy(node->bck_TCP, info->TCP);
         strcpy(return_value, "0");
     }
     else
     {
+        fdes[atoi(id)] = newfd;
         node->intr[node->num_intr] = init_internal_node(id, IP, TCP);
         node->num_intr++;
         sprintf(return_value, "%s %s %s %s\n", "EXTERN", node->ext, node->ext_IP, node->ext_TCP);
@@ -335,9 +379,9 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
        update_intr(fdes, newfd, node,orig);
        update_ext( newfd, node, orig);
         if(check==1)
-        sprintf(return_value, "%s %s %s %s\n", "CONTENT", dest, orig, name); 
+        sprintf(return_value, "%s %s %s %s\n", "CONTENT", orig, dest, name); 
         else
-        sprintf(return_value, "%s %s %s %s\n", "NOCONTENT", dest, orig, name);
+        sprintf(return_value, "%s %s %s %s\n", "NOCONTENT", orig, dest, name);
     }
     else
     {
@@ -356,7 +400,7 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
         {
             update_intr(fdes, newfd, node, orig);
             sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, orig, name);
-            send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
+            send_tcp(send_str,node->ext_fd,buffer);
             return_value = "0";  
         }
         
@@ -385,13 +429,15 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
     strcpy(buffer, " ");
     char send_str[100];
 
-    if (strcmp(dest,(node->id))==0)
+    if (strcmp(dest,(node->id))==0) //se nos somos o destino
     {
         strcpy(node->contents[node->num_content],name);
         node->num_content++;
         printf("Content %s added to the node\n",name);
+        update_intr(fdes, newfd, node, orig);
+        update_ext(newfd, node, orig);
     }
-    if((node->table[atoi(dest)]!= atoi(node->ext)) )
+    else if((node->table[atoi(dest)]!= atoi(node->ext)))        //se nao for para mandar para o externo
     {
         for (int i = 0; i < 100; i++)
         {
@@ -401,9 +447,9 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
             }
         }
         sprintf(send_str, "%s %s %s %s\n", "CONTENT", dest, orig, name);
-        send_tcp(send_str,fdes[node->table[atoi(orig)]],buffer);
+        send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
     }
-    else
+    else    //se for para mandar para o externo
     {
         if (newfd == node->ext_fd)
         {
@@ -413,7 +459,7 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
         send_tcp(send_str,node->ext_fd,buffer);
     }
     return_value = "0";
-   return return_value; 
+    return return_value; 
 }
 
 char* N_CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd)
@@ -426,17 +472,13 @@ char* N_CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char
     {
         printf("Content %s does not exist\n",name);
     }
-    if((node->table[atoi(dest)]!= atoi(node->ext)) )
+    else if((node->table[atoi(dest)]!= atoi(node->ext)) )
     {
-        for (int i = 0; i < 100; i++)
-        {
-            if (fdes[i]==newfd) //nó que nos mandou o query
-            {
-                node->table[atoi(orig)]=i;     //atualiza a tabela de expedição
-            }
-        }
+        printf("NOCONTENT %d %d\n",atoi(dest), node->table[atoi(dest)]);
+        update_intr(fdes,newfd,node,orig);
+        update_ext(newfd,node,orig);
         sprintf(send_str, "%s %s %s %s\n", "NOCONTENT", dest, orig, name);
-        send_tcp(send_str,fdes[node->table[atoi(orig)]],buffer);
+        send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
     }
     else
     {
@@ -448,7 +490,7 @@ char* N_CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char
         send_tcp(send_str,node->ext_fd,buffer);
     }
     return_value = "0";
-   return return_value;   
+    return return_value;   
 }
 
 void update_intr(int* fdes, int newfd, node_info_struct* node, char* orig)

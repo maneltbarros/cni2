@@ -28,6 +28,10 @@
 
 int main(int argc, char *argv[])
 {
+    struct sigaction act;
+    memset(&act,0,sizeof act);
+    act.sa_handler=SIG_IGN;
+    if(sigaction(SIGPIPE,&act,NULL)==-1)/*error*/exit(1);
 
     init_info_struct* info = allocate_info();
 
@@ -122,15 +126,15 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "show") == 0)
                     {
-                        if(strcmp(str1, "topology") == 0)
+                        if(strcmp(str2, "topology") == 0)
                         {
                             return_value = show_topology(node);
                         }
-                        else if(strcmp(str1, "names") == 0)
+                        else if(strcmp(str2, "names") == 0)
                         {
-                            return_value = show_names();
+                            return_value = show_names(node);
                         }
-                        else if(strcmp(str1, "routing") == 0)
+                        else if(strcmp(str2, "routing") == 0)
                         {
                             return_value = show_routing();
                         }
@@ -141,11 +145,11 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "sn") == 0)
                     {
-                        return_value = show_names();
+                        return_value = show_names(node);
                     }
                     else if(strcmp(str1, "sr") == 0)
                     {
-                        return_value = show_routing();
+                        return_value = show_routing(node);
                     }
                     else if(strcmp(str1, "leave") == 0)
                     {
@@ -201,5 +205,4 @@ int main(int argc, char *argv[])
         }
     }
 }
-/*freeaddrinfo(res);*/
 

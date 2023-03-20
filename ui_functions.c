@@ -28,7 +28,7 @@
 
 int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node_info_struct* node, int fd)
 {
-    char buffer[128+1];
+    char buffer[5000];
 
     int return_value = -1;
 
@@ -60,6 +60,8 @@ int join(char* net, char* id, struct addrinfo* res, init_info_struct* info, node
     strcat(send_str, info->IP);
     strcat(send_str, " ");
     strcat(send_str, info->TCP);
+
+    printf("send_str:%s;", send_str);
 
     send_message_udp(send_str, fd_udp, res);
 
@@ -114,8 +116,9 @@ int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct
         strcat(send_str, "\n");
 
         char buffer[128+1];
-
+        printf("agora vai fzr send\n");
         send_tcp(send_str, fd_TCP, buffer);
+        node->table[atoi(node->ext)] = atoi(node->ext);
         ////////////////////////////////////////////////////////////
     }
 
@@ -124,7 +127,7 @@ int djoin(char* net, char* id, char* bootid, char* bootIP, char* bootTCP, struct
 
 char create(char* name, node_info_struct* node)
 {
-    strcpy(name, node->contents[node->num_content]);
+    strcpy(node->contents[node->num_content], name);
     node->num_content++;
     return 's';
 }
@@ -150,20 +153,34 @@ char get_fctn(char* dest, char* name, init_info_struct* info, node_info_struct* 
 {
     char send_str[100];
     sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, node->id, name);
-    char buffer[128];
-    for (int i = 0; i < 100; i++)
+    char buffer[128] = {0,};
+
+    if (node->table[atoi(dest)]!=-1)
     {
-        if (atoi(dest) == node->table[i])
+        if (atoi(node->ext) == node->table[atoi(dest)])
         {
-            if (atoi(node->ext) == i)
-            {
-                send_tcp(send_str,node->ext_fd,buffer);
-            }
-            else
-            send_tcp(send_str,fdes[i],buffer);
+            send_tcp(send_str,node->ext_fd,buffer);
         }
-        return 's';
+        else
+        {
+            printf("Vou fazer send para o int: %d ;\n ", node->table[atoi(dest)]);
+            send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
+        }
+    return 's';
     }
+    else
+    {
+        printf("vou fazer send para o ext:%s %s %s %d;\n", node->ext, node->ext_IP, node->ext_TCP, node->ext_fd);
+        send_tcp(send_str,node->ext_fd,buffer);
+        for(int j = 0; j< node->num_intr;++j)
+        {
+        if(fdes[j]!=-1)
+        send_tcp(send_str,fdes[atoi(node->intr[j]->id)],buffer);
+        }
+    }
+    
+
+
     return 's';
 }
 
@@ -199,8 +216,15 @@ char show_names(node_info_struct* node)
     return 's';
 }
 
-char show_routing()
+char show_routing(node_info_struct* node)
 {
+    printf("Routing:\n");
+    for (int i = 0; i < 100; i++)
+    {
+        if(node->table[i] != -1)printf("%d -> %d\n", i, node->table[i]);
+    }
+    printf("\n");
+    
     return 's';
 }
 

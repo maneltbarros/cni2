@@ -195,17 +195,23 @@ node_info_struct* allocate_node()
     node->bck = (char*)malloc(5);
     node->num_intr = 0;
     node->num_content = 0;
-    for(int i = 0; i > 100;++i)
+    for(int i = 0; i < 100;++i)
     {
           node->table[i] = -1;
     }
+    for(int i = 0; i < 100;++i)
+    {
+          memset(node->contents[i], 0, sizeof(node->contents[i]));
+    }
     return node;
-    node->num_content=0;
 }
 
 choose_node_struct* init_choose_node_struct(char* id, init_info_struct* info)
 {
      choose_node_struct* chosen_node = (choose_node_struct*)malloc(sizeof(choose_node_struct));
+     memset(chosen_node->chosen_node_bootid, 0, sizeof(chosen_node->chosen_node_bootid));
+     memset(chosen_node->chosen_node_bootIP, 0, sizeof(chosen_node->chosen_node_bootIP));
+     memset(chosen_node->chosen_node_bootTCP, 0, sizeof(chosen_node->chosen_node_bootTCP ));
 
      strcpy(chosen_node->chosen_node_bootid, id);
      strcpy(chosen_node->chosen_node_bootIP, info->IP);

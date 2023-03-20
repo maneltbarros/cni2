@@ -43,8 +43,8 @@ typedef struct node_info
     char* bck_TCP;
     int num_intr;
     internal_node* intr[100];
-    int table[100];
-    char contents[1000][100];
+    int table[100];//inicializar a -1
+    char contents[100][100];//fazer malloc e realloc
     int num_content;
 }node_info_struct;
 

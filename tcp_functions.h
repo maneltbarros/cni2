@@ -32,14 +32,14 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 
 void fix_topology(int id_do_gajo, node_info_struct* node, init_info_struct* info, int* fdes, fd_set* inputs);
 
-char* NEW(char* id, char* IP, char* TCP, node_info_struct* node, char* return_value, int* fdes, int newfd);
+char* NEW(char* id, char* IP, char* TCP, node_info_struct* node, init_info_struct* info, char* return_value, int* fdes, int newfd);
 char* EXTERN(char* bck, char* IP, char* TCP, node_info_struct* node, char* return_value);
 char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd);
 char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd);
 char* N_CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd);
+
 void update_intr(int* fdes, int newfd, node_info_struct* node, char* orig);
 void update_ext(int newfd, node_info_struct* node, char* orig);
-
 
 #endif    /* __tcp_functions__ */
 
