@@ -46,14 +46,22 @@ struct addrinfo *get_tcp_server_info(char* bootIP, char* bootTCP)
     hints_TCP.ai_family=AF_INET;//IPv4
     hints_TCP.ai_socktype=SOCK_STREAM;//TCP socket
     n_TCP=getaddrinfo(bootIP, bootTCP, &hints_TCP,&res_TCP);
-    if(n_TCP!=0)/*error*/perror("getaddrinfo");
+    if(n_TCP!=0)/*error*/
+    {
+        perror("getaddrinfo");
+        exit(1);
+    }
     return res_TCP;
 }
 
 int open_tcp_socket()
 {
     int fd_TCP=socket(AF_INET,SOCK_STREAM,0);//TCP socket
-    if(fd_TCP==-1)perror("socket");//error
+    if(fd_TCP==-1)//error
+    {
+        perror("socket");
+        exit(1);
+    }
     return fd_TCP;
 }
 
@@ -93,14 +101,30 @@ int open_tcp_server(char* IP, char* TCP)
 {
     struct addrinfo hints,*res;
     int fd,/*newfd,*/errcode; /*ssize_t n,nw;*/
-    if((fd=socket(AF_INET,SOCK_STREAM,0))==-1)perror("socket");//error
+    if((fd=socket(AF_INET,SOCK_STREAM,0))==-1)//error
+    {
+        perror("socket");
+        exit(1);
+    }
     memset(&hints,0,sizeof hints);
     hints.ai_family=AF_INET;//IPv4
     hints.ai_socktype=SOCK_STREAM;//TCP socket
     hints.ai_flags=AI_PASSIVE;
-    if((errcode=getaddrinfo(IP,TCP,&hints,&res))!=0)/*error*/perror("getaddrinfo");
-    if(bind(fd,res->ai_addr,res->ai_addrlen)==-1)/*error*/perror("bind");
-    if(listen(fd,100)==-1)/*error*/perror("listen");
+    if((errcode=getaddrinfo(IP,TCP,&hints,&res))!=0)/*error*/
+    {
+        perror("getaddrinfo");
+        exit(1);
+    }
+    if(bind(fd,res->ai_addr,res->ai_addrlen)==-1)/*error*/
+    {
+        perror("bind");
+        exit(1);
+    }
+    if(listen(fd,100)==-1)/*error*/
+    {
+        perror("listen");
+        exit(1);
+    }
     return fd;
 }
 
@@ -110,7 +134,11 @@ int accept_connection(int fd)
     struct sockaddr addr; socklen_t addrlen;
     addrlen = sizeof(addr);
     if((newfd=accept(fd,&addr,&addrlen))==-1)
-    /*error*/perror("accept");
+    /*error*/
+    {
+        perror("accept");
+        exit(1);
+    }
     return newfd;
 }
 
@@ -120,10 +148,17 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
     char *ptr,buffer[128] = {0,};
     strcpy(buffer, " ");
     int first_time = 1;
+    int scanf_return = 0;
+    char error_msg[100];
+    strcpy(error_msg, "received invalid message");
 
     while((n=read(newfd,buffer,128))!=0)
     {
-        if(n==-1)/*error*/perror("read");
+        if(n==-1)/*error*/
+        {
+            perror("read");
+            exit(1);
+        }
         if(first_time == 1)first_time = 0;
         printf("read:%s\n", buffer);
         printf("n:%ld\n", n);
@@ -155,33 +190,68 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
 
     char* return_value = (char*)malloc(MAX_STR);
 
-    sscanf(buffer, "%s %s %s %s", str1, str2, str3, str4);
+    scanf_return = sscanf(buffer, "%s %s %s %s", str1, str2, str3, str4);
 
     printf("recv instruction:%s;\n", str1);
 
     if(strcmp(str1, "NEW") == 0)
     {
-        return_value = NEW(str2, str3, str4, node, info, return_value, fdes, newfd);
+        if(is_valid_id(str2) && scanf_return > 3)
+        {
+            return_value = NEW(str2, str3, str4, node, info, return_value, fdes, newfd);
+        }
+        else
+        {
+            printf("%s\n", error_msg);
+        }
     }
     else if(strcmp(str1, "EXTERN") == 0)
     {
-        return_value = EXTERN(str2, str3, str4, node, return_value);
+        if(is_valid_id(str2) && scanf_return > 3)
+        {
+            return_value = EXTERN(str2, str3, str4, node, return_value);
+        }
+        else
+        {
+            printf("%s\n", error_msg);
+        }
     }
     else if(strcmp(str1, "QUERY") == 0)
     {
-        return_value = QUERY(str2, str3, str4, node, return_value, fdes, newfd);
+        if(is_valid_id(str2) && is_valid_id(str3) && scanf_return > 3 && strcmp(str2, str3) != 0)
+        {
+            return_value = QUERY(str2, str3, str4, node, return_value, fdes, newfd);
+        }
+        else
+        {
+            printf("%s\n", error_msg);
+        }
     }
     else if(strcmp(str1, "CONTENT") == 0)
     {
-        return_value=CONTENT(str2,str3, str4, node, return_value, fdes, newfd);
+        if(is_valid_id(str2) && is_valid_id(str3) && scanf_return > 3 && strcmp(str2, str3) != 0)
+        {
+            return_value=CONTENT(str2,str3, str4, node, return_value, fdes, newfd);
+        }
+        else
+        {
+            printf("%s\n", error_msg);
+        }
     }
     else if(strcmp(str1, "NOCONTENT") == 0)
     {
-        return_value=N_CONTENT(str2,str3, str4, node, return_value, fdes, newfd);
+        if(is_valid_id(str2) && is_valid_id(str3) && scanf_return > 3 && strcmp(str2, str3) != 0)
+        {
+            return_value=N_CONTENT(str2,str3, str4, node, return_value, fdes, newfd);
+        }
+        else
+        {
+            printf("%s\n", error_msg);
+        }
     }
     else if(strcmp(str1, "WITHDRAW") == 0)
     {
-        node->table[atoi(str2)] = -1;
+        if(atoi(str2) < 100 && atoi(str2) >= 0)     node->table[atoi(str2)] = -1;
     }
     else
     {
@@ -194,7 +264,11 @@ void receive_and_send_tcp(int newfd, int* fdes, init_info_struct* info, node_inf
         strcpy(buffer, return_value);
         ptr=&buffer[0];
         n = strlen(buffer);
-        while(n>0){if((nw=write(newfd,ptr,n))<=0)/*error*/perror("write");
+        while(n>0){if((nw=write(newfd,ptr,n))<=0)/*error*/
+        {
+            perror("write");
+            exit(1);
+        }
         printf("wrote:%s\n", ptr);
         n-=nw; ptr+=nw;}
     }
@@ -357,6 +431,12 @@ char* EXTERN(char* bck, char* IP, char* TCP, node_info_struct* node, char* retur
 char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd)
 {
     int check=0;
+    if(strcmp(dest,orig)==0)
+    {
+        printf("Invalid message");
+        return_value = "0";
+        return return_value;
+    }
     if (strcmp(dest,node->id)==0)
     {
        for (int i = 0; i < node->num_content; i++)//ver se o content existe
@@ -376,8 +456,6 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
                 break;
             }
        }
-       update_intr(fdes, newfd, node,orig);
-       update_ext( newfd, node, orig);
         if(check==1)
         sprintf(return_value, "%s %s %s %s\n", "CONTENT", orig, dest, name); 
         else
@@ -390,15 +468,12 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
         char send_str[100];
         if ((node->table[atoi(dest)])!=-1 && (node->table[atoi(dest)])!=atoi(node->ext))
         {
-            update_intr(fdes, newfd, node, orig);
-            update_ext(newfd, node, orig);
             sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, orig, name);
             send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
             return_value = "0";
         }
         if ((node->table[atoi(dest)])!=-1 && (node->table[atoi(dest)])==atoi(node->ext))
         {
-            update_intr(fdes, newfd, node, orig);
             sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, orig, name);
             send_tcp(send_str,node->ext_fd,buffer);
             return_value = "0";  
@@ -408,18 +483,17 @@ char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* re
         {
             for (int i = 0; i < 100; i++)
             {
-                if (fdes[i]!=-1 && fdes[i]!=newfd) //alterar fdes para -1
+                if (fdes[i]!=-1 && fdes[i]!=newfd) 
                 {
                     sprintf(send_str, "%s %s %s %s\n", "QUERY", dest, orig, name);
                     send_tcp(send_str,fdes[i],buffer);
                 }
             }
-            update_intr(fdes, newfd, node, orig);
-
-            update_ext(newfd, node, orig);
             return_value = "0";
         }       
     }
+    update_intr(fdes, newfd, node, orig);
+    update_ext(newfd, node, orig);
     return return_value; 
 }
 
@@ -434,31 +508,20 @@ char* CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char* 
         strcpy(node->contents[node->num_content],name);
         node->num_content++;
         printf("Content %s added to the node\n",name);
-        update_intr(fdes, newfd, node, orig);
-        update_ext(newfd, node, orig);
     }
     else if((node->table[atoi(dest)]!= atoi(node->ext)))        //se nao for para mandar para o externo
     {
-        for (int i = 0; i < 100; i++)
-        {
-            if (fdes[i]==newfd) //nó que nos mandou o query
-            {
-                node->table[atoi(orig)]=i;     //atualiza a tabela de expedição
-            }
-        }
         sprintf(send_str, "%s %s %s %s\n", "CONTENT", dest, orig, name);
         send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
     }
     else    //se for para mandar para o externo
     {
-        if (newfd == node->ext_fd)
-        {
-            node->table[atoi(orig)]=atoi(node->ext);     //atualiza a tabela de expedição
-        }
         sprintf(send_str, "%s %s %s %s\n", "CONTENT", dest, orig, name);
         send_tcp(send_str,node->ext_fd,buffer);
     }
     return_value = "0";
+    update_intr(fdes, newfd, node, orig);
+    update_ext(newfd, node, orig);
     return return_value; 
 }
 
@@ -475,20 +538,16 @@ char* N_CONTENT(char* dest, char* orig, char* name, node_info_struct* node, char
     else if((node->table[atoi(dest)]!= atoi(node->ext)) )
     {
         printf("NOCONTENT %d %d\n",atoi(dest), node->table[atoi(dest)]);
-        update_intr(fdes,newfd,node,orig);
-        update_ext(newfd,node,orig);
         sprintf(send_str, "%s %s %s %s\n", "NOCONTENT", dest, orig, name);
         send_tcp(send_str,fdes[node->table[atoi(dest)]],buffer);
     }
     else
     {
-        if (newfd == node->ext_fd)
-        {
-            node->table[atoi(orig)]=atoi(node->ext);     //atualiza a tabela de expedição
-        }
         sprintf(send_str, "%s %s %s %s\n", "NOCONTENT", dest, orig, name);
         send_tcp(send_str,node->ext_fd,buffer);
     }
+    update_intr(fdes, newfd, node, orig);
+    update_ext(newfd, node, orig);
     return_value = "0";
     return return_value;   
 }

@@ -60,6 +60,9 @@ init_info_struct* check_correct_input(char* IP, char* TCP, char* regIP, char* re
 choose_node_struct* choose_node(char* str, choose_node_struct* chosen_node);
 char* unique_id(char* buffer, char* id);
 
+int is_valid_net(char* str);
+int is_valid_id(char* str);
+
 init_info_struct* allocate_info();
 node_info_struct* allocate_node();
 choose_node_struct* init_choose_node_struct(char* id, init_info_struct* info);

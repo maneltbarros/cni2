@@ -172,6 +172,28 @@ char* unique_id(char* buffer, char* id)
      return id;
 }
 
+int is_valid_id(char* str)
+{
+     if(strlen(str) != 2) return 0;
+
+     for(int i = 0; i < strlen(str); ++i)
+     {
+          if(str[i] > '9' || str[i] < '0') return 0;
+     }
+     return 1;
+}
+
+int is_valid_net(char* str)
+{
+     if(strlen(str) != 3) return 0;
+
+     for(int i = 0; i < strlen(str); ++i)
+     {
+          if(str[i] > '9' || str[i] < '0') return 0;
+     }
+     return 1;
+}
+
 init_info_struct* allocate_info()
 {
     init_info_struct* info = (init_info_struct*)malloc(sizeof(init_info_struct));

@@ -21,6 +21,11 @@
 
 init_info_struct* process_init_input(init_info_struct* info, int argc, char *argv[])
 {
+    if(argc < 3)
+    {
+        printf("invalid parameters\n");
+        exit(1);
+    }
     char* IP = NULL;
     char* TCP = NULL;
     char* regIP = NULL;

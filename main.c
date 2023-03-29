@@ -25,13 +25,14 @@
 
 #define MAX_STR 100
 
-
 int main(int argc, char *argv[])
 {
     struct sigaction act;
     memset(&act,0,sizeof act);
     act.sa_handler=SIG_IGN;
     if(sigaction(SIGPIPE,&act,NULL)==-1)/*error*/exit(1);
+    char error_msg[100];
+    strcpy(error_msg, "invalid command");
 
     init_info_struct* info = allocate_info();
 
@@ -75,6 +76,8 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i < 100; ++i)fdes[i]=-1;
 
+    int scanf_return = 0;
+
     while(1)
     {
         testfds=inputs;
@@ -100,21 +103,42 @@ int main(int argc, char *argv[])
                     }
                     printf("------------------------------Input at keyboard: %s\n",in_str);
 
-                    sscanf(in_str, "%s %s %s %s %s %s", str1, str2, str3, str4, str5, str6);
+                    scanf_return = sscanf(in_str, "%s %s %s %s %s %s", str1, str2, str3, str4, str5, str6);
 
                     if(strcmp(str1, "join") == 0)
                     {
-                        node->ext_fd = join(str2, str3, res_udp, info, node, fd);
-                        FD_SET(node->ext_fd, &inputs);
+                        if(is_valid_net(str2) && is_valid_id(str3))
+                        {
+                            node->ext_fd = join(str2, str3, res_udp, info, node, fd);
+                            FD_SET(node->ext_fd, &inputs);
+                        }
+                        else
+                        {
+                            printf("%s\n", error_msg);
+                            continue;
+                        }
                     }
                     else if(strcmp(str1, "djoin") == 0)
                     {
-                        node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
-                        FD_SET(node->ext_fd, &inputs);
+                        if(is_valid_net(str2) && is_valid_id(str3) && is_valid_id(str4))
+                        {
+                            node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
+                            FD_SET(node->ext_fd, &inputs);
+                        }
+                        else
+                        {
+                            printf("%s\n", error_msg);
+                            continue;
+                        }
                     }
                     else if(strcmp(str1, "create") == 0)
                     {
-                        return_value = create(str2, node);
+                        if(scanf_return == 2)   return_value = create(str2, node);
+                        else
+                        {
+                            printf("%s\n", error_msg);
+                            continue;
+                        }
                     }
                     else if(strcmp(str1, "delete") == 0)
                     {
@@ -122,7 +146,12 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "get") == 0)
                     {
-                        return_value = get_fctn(str2, str3, info, node, fdes);
+                        if(is_valid_id(str2) && scanf_return == 3)  return_value = get_fctn(str2, str3, info, node, fdes);
+                        else
+                        {
+                            printf("%s\n", error_msg);
+                            continue;
+                        }
                     }
                     else if(strcmp(str1, "show") == 0)
                     {
