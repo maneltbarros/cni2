@@ -6,11 +6,10 @@
  *   functions that perform the user interface tasks
  *
  * COMMENTS
- * TODO: perguntar ao stor o que se faz quando somos o orig e recebemos un content ou nocontent (get)   
- *       como e que eu sei que alguem fez leave (quando eles fazem close(fd), recebemos qq coisa?))
- *          - ent nao posso fzr close(fd) quando sou cliente certo?
- *       é preciso o valgrind estar bom? - como e que se resolve aquela shit do buffer
- *       o que e preciso fzr no leave?
+ * TODO: por os buffers todos com tipo 5000 de espaço
+ *       garantir que ha espaço suficiente para tudo o que pode dar overflow por falta de espaço
+ *       o que fazer quando a rede está cheia (não ha id disponivel)
+ *       fazer o array de buffers para cada fd
  *
  ******************************************************************************/
 #include <sys/types.h>
@@ -431,12 +430,6 @@ char* EXTERN(char* bck, char* IP, char* TCP, node_info_struct* node, char* retur
 char* QUERY(char* dest, char* orig, char* name, node_info_struct* node, char* return_value, int* fdes, int newfd)
 {
     int check=0;
-    if(strcmp(dest,orig)==0)
-    {
-        printf("Invalid message");
-        return_value = "0";
-        return return_value;
-    }
     if (strcmp(dest,node->id)==0)
     {
        for (int i = 0; i < node->num_content; i++)//ver se o content existe

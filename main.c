@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
     for(int i = 0; i < 100; ++i)fdes[i]=-1;
 
     int scanf_return = 0;
+    int cnt = 0;
 
     while(1)
     {
@@ -103,33 +104,47 @@ int main(int argc, char *argv[])
                     }
                     printf("------------------------------Input at keyboard: %s\n",in_str);
 
+                    //por str1 como invalid input
+
                     scanf_return = sscanf(in_str, "%s %s %s %s %s %s", str1, str2, str3, str4, str5, str6);
 
                     if(strcmp(str1, "join") == 0)
                     {
-                        if(is_valid_net(str2) && is_valid_id(str3))
+                        if (cnt==0)
                         {
-                            node->ext_fd = join(str2, str3, res_udp, info, node, fd);
-                            FD_SET(node->ext_fd, &inputs);
+                            if(is_valid_net(str2) && is_valid_id(str3))
+                            {
+                                node->ext_fd = join(str2, str3, res_udp, info, node, fd);
+                                FD_SET(node->ext_fd, &inputs);
+                            }
+                            else
+                            {
+                                printf("%s\n", error_msg);
+                                continue;
+                            }
+                            cnt=1;  
                         }
                         else
-                        {
-                            printf("%s\n", error_msg);
-                            continue;
-                        }
+                        printf("Invalid input\n");
                     }
                     else if(strcmp(str1, "djoin") == 0)
-                    {
-                        if(is_valid_net(str2) && is_valid_id(str3) && is_valid_id(str4))
+                    {//TA FODIDO
+                        if (cnt==0)
                         {
-                            node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
-                            FD_SET(node->ext_fd, &inputs);
+                            if(is_valid_net(str2) && is_valid_id(str3) && is_valid_id(str4))
+                            {
+                                node->ext_fd = djoin(str2, str3, str4, str5, str6, res_udp, info, node, fd);
+                                FD_SET(node->ext_fd, &inputs);
+                            }
+                            else
+                            {
+                                printf("%s\n", error_msg);
+                                continue;
+                            }
+                            cnt=1;
                         }
                         else
-                        {
-                            printf("%s\n", error_msg);
-                            continue;
-                        }
+                        printf("Invalid input\n");
                     }
                     else if(strcmp(str1, "create") == 0)
                     {
@@ -146,7 +161,7 @@ int main(int argc, char *argv[])
                     }
                     else if(strcmp(str1, "get") == 0)
                     {
-                        if(is_valid_id(str2) && scanf_return == 3)  return_value = get_fctn(str2, str3, info, node, fdes);
+                        if(is_valid_id(str2) && scanf_return == 3 && strcmp(str2, node->id) != 0)  return_value = get_fctn(str2, str3, info, node, fdes);
                         else
                         {
                             printf("%s\n", error_msg);
@@ -183,9 +198,12 @@ int main(int argc, char *argv[])
                     else if(strcmp(str1, "leave") == 0)
                     {
                         return_value = leave(res_udp, info, node, fdes, fd, &inputs);
+                        cnt=0;
                     }
                     else if(strcmp(str1, "exit") == 0)
                     {
+                        //adicionar chamada da funcao leave
+                        return_value = leave(res_udp, info, node, fdes, fd, &inputs);
                         exit_fctn(str1, str2, str3, str4, str5, str6, res_udp, info, node, fdes);
                     }
                     else
@@ -197,6 +215,7 @@ int main(int argc, char *argv[])
                 {
                     int newfd = accept_connection(fd);
                     FD_SET(newfd,&inputs);
+                    //adidionar timer e resolver cenas se expirar
                     wait_fds[wait_fds_cnt] = newfd;
                     wait_fds_cnt++;
 
